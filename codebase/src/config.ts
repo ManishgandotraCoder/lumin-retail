@@ -122,9 +122,9 @@ export const config = {
   embeddingDim: 768,
   memoryLastMessages: Number(process.env.MEMORY_LAST_MESSAGES ?? 12),
 
-  // Lumen MCP server (../mcp, deployed on Vercel): catalogue, stock and policy tools are called there.
+  // Lumen MCP server (../mcp, run locally with `npm start` there): catalogue, stock and policy tools are called there.
   mcp: {
-    url: optional('MCP_URL') ?? 'https://lumin-retail.vercel.app/mcp',
+    url: optional('MCP_URL') ?? 'http://127.0.0.1:3100/mcp',
     token: optional('MCP_TOKEN'),
     timeoutMs: Number(process.env.MCP_TIMEOUT_MS ?? 30_000),
   },
