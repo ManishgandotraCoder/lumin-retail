@@ -3,8 +3,8 @@ import { createAgent, createMiddleware, trimMessages, ToolMessage } from 'langch
 import { config } from '../config.js'
 import { audit } from '../audit.js'
 import { getChatModel } from '../llm/altrum.js'
-import { searchProductsTool, checkInventoryTool } from '../tools/shoppingTools.js'
-import { searchPoliciesTool, getOrderStatusTool, prepareReturnRequestTool } from '../tools/supportTools.js'
+import { mcpTool } from '../tools/mcpTools.js'
+import { getOrderStatusTool, prepareReturnRequestTool } from '../tools/supportTools.js'
 import { currentTurnTrace, turnContextSchema } from './context.js'
 
 export type Route = 'shopping' | 'support'
@@ -71,6 +71,14 @@ const recentHistory = createMiddleware({
     }),
 })
 
+// Tool output as text: local tools return a string, MCP tools may return content blocks.
+const toolText = (content: unknown): string =>
+  typeof content === 'string'
+    ? content
+    : Array.isArray(content)
+      ? content.map((b) => (typeof b === 'string' ? b : b?.type === 'text' ? b.text : '')).join('')
+      : String(content)
+
 // Audit every tool call and record tools / policy sources for the chat response.
 const toolAudit = (agentId: string) =>
   createMiddleware({
@@ -86,13 +94,13 @@ const toolAudit = (agentId: string) =>
         const failed = result instanceof ToolMessage && result.status === 'error'
         if (name === 'search_policies' && result instanceof ToolMessage && !failed) {
           try {
-            for (const p of JSON.parse(String(result.content)).passages ?? []) trace?.sources.add(p.title)
+            for (const p of JSON.parse(toolText(result.content)).passages ?? []) trace?.sources.add(p.title)
           } catch { /* non-JSON output: no sources */ }
         }
         await audit(request.runtime.context.sessionId, 'tool_call', {
           ...entry,
           ok: !failed,
-          error: failed ? String(result.content).slice(0, 300) : undefined,
+          error: failed ? toolText(result.content).slice(0, 300) : undefined,
         })
         return result
       } catch (err) {
@@ -109,7 +117,7 @@ export const shoppingAgent = createAgent({
   description: 'Product discovery, recommendations, comparisons and stock checks.',
   model: defaultModel('shopping'),
   systemPrompt: SHOPPING_PROMPT,
-  tools: [searchProductsTool, checkInventoryTool],
+  tools: [mcpTool('search_products'), mcpTool('check_inventory')],
   contextSchema: turnContextSchema,
   middleware: [altrumModel('shopping'), recentHistory, toolAudit('shopping-agent')],
 })
@@ -119,7 +127,7 @@ export const supportAgent = createAgent({
   description: 'Policies (returns, refunds, delivery, warranty, promotions), order status and return requests.',
   model: defaultModel('support'),
   systemPrompt: SUPPORT_PROMPT,
-  tools: [searchPoliciesTool, getOrderStatusTool, prepareReturnRequestTool],
+  tools: [mcpTool('search_policies'), getOrderStatusTool, prepareReturnRequestTool],
   contextSchema: turnContextSchema,
   middleware: [altrumModel('support'), recentHistory, toolAudit('support-agent')],
 })

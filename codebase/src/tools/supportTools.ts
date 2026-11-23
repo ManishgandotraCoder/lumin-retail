@@ -1,4 +1,4 @@
-// Support agent tools: policy search (RAG), order status and return requests.
+// Support agent order tools: order status and return requests. (Policy search is on the MCP server.)
 //
 // Security rule: the customer ID always comes from the server-side session
 // (LangGraph runtime context), never from the model. The model cannot look up another
@@ -6,7 +6,6 @@
 import { tool, type ToolRuntime } from '@langchain/core/tools'
 import { z } from 'zod'
 import { query, pool } from '../db/pool.js'
-import { searchPolicies } from '../rag/search.js'
 import type { TurnContext } from '../agents/context.js'
 
 type Runtime = ToolRuntime<unknown, TurnContext>
@@ -16,23 +15,6 @@ function customerIdFrom(runtime: Runtime): string {
   if (!id) throw new Error('No authenticated customer for this session.')
   return id
 }
-
-export const searchPoliciesTool = tool(
-  async ({ question }) => {
-    const passages = await searchPolicies(question)
-    if (passages.length === 0) return JSON.stringify({ found: false, message: 'No approved policy covers this question.' })
-    return JSON.stringify({ found: true, passages })
-  },
-  {
-    name: 'search_policies',
-    description:
-      'Search Lumen Retail approved policy documents (returns, refunds, delivery, warranty, promotions, FAQ, privacy, consumer rights). ' +
-      'Always use this before answering any policy question, and cite the source title.',
-    schema: z.object({
-      question: z.string().describe('The policy question in plain words'),
-    }),
-  },
-)
 
 export const getOrderStatusTool = tool(
   async ({ orderId }, runtime: Runtime) => {

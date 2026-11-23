@@ -121,6 +121,13 @@ export const config = {
   embeddingCacheDir: optional('EMBEDDING_CACHE_DIR') ?? 'node_modules/.cache/fastembed',
   embeddingDim: 768,
   memoryLastMessages: Number(process.env.MEMORY_LAST_MESSAGES ?? 12),
+
+  // Lumen MCP server (../mcp, deployed on Vercel): catalogue, stock and policy tools are called there.
+  mcp: {
+    url: optional('MCP_URL') ?? 'https://lumin-retail.vercel.app/mcp',
+    token: optional('MCP_TOKEN'),
+    timeoutMs: Number(process.env.MCP_TIMEOUT_MS ?? 30_000),
+  },
   localRedactInput: process.env.LOCAL_REDACT_INPUT === 'true',
 
   policyIndex: 'lumen_policies',
