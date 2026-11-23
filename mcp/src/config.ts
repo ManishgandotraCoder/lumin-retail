@@ -21,7 +21,8 @@ if (embeddingProvider !== 'local' && embeddingProvider !== 'huggingface') {
   throw new Error('EMBEDDING_PROVIDER must be local or huggingface')
 }
 const hfToken = optional('HF_TOKEN')
-if (embeddingProvider === 'huggingface' && !hfToken) throw new Error('EMBEDDING_PROVIDER=huggingface needs HF_TOKEN')
+const usesEmbeddings = optional('POLICY_SEARCH')?.toLowerCase() !== 'fulltext'
+if (usesEmbeddings && embeddingProvider === 'huggingface' && !hfToken) throw new Error('EMBEDDING_PROVIDER=huggingface needs HF_TOKEN')
 
 export const serverless = Boolean(process.env.VERCEL)
 
@@ -47,4 +48,7 @@ export const config = {
   embeddingCacheDir: optional('EMBEDDING_CACHE_DIR') ?? 'node_modules/.cache/fastembed',
   embeddingDim: 768,
   policyIndex: 'lumen_policies',
+  // vector   = semantic search with embeddings (EMBEDDING_PROVIDER)
+  // fulltext = Postgres full-text search on the same table: no model, no token (use on Vercel free tier)
+  policySearch: (optional('POLICY_SEARCH')?.toLowerCase() === 'fulltext' ? 'fulltext' : 'vector') as 'vector' | 'fulltext',
 }

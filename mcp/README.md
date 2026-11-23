@@ -41,8 +41,7 @@ claude mcp add lumen -- npx tsx /absolute/path/to/mcp/src/stdio.ts
    |---|---|
    | `DATABASE_URL` | **pooled** connection string (Neon / Supabase), pgvector enabled and loaded |
    | `MCP_TOKEN` | `openssl rand -hex 32`; required |
-   | `EMBEDDING_PROVIDER` | `huggingface` (FastEmbed is too large for a Vercel function) |
-   | `HF_TOKEN` | Hugging Face access token (read) |
+   | `POLICY_SEARCH` | `fulltext` (free, no model), **or** `vector` + `EMBEDDING_PROVIDER=huggingface` + `HF_TOKEN` (needs HF credits; FastEmbed is too large for Vercel) |
    | `MCP_ALLOWED_HOSTS` | optional, e.g. `lumen-mcp.vercel.app,mcp.example.com` |
 
 3. Deploy, then check `https://<project>.vercel.app/health` and connect:
