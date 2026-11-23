@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lumen Staff – Return approvals</title>
+<style>
+  body { margin:0; font:14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; background:#f6f5f2; color:#1f2328; }
+  header { background:#3b3f46; color:#fff; padding:14px 20px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  header h1 { font-size:17px; margin:0; }
+  header .spacer { flex:1; }
+  input, button { font:inherit; padding:6px 10px; border-radius:6px; border:1px solid #c9c6bf; }
+  button { cursor:pointer; background:#fff; }
+  main { max-width:1100px; margin:0 auto; padding:20px; }
+  h2 { font-size:15px; margin:24px 0 8px; }
+  table { width:100%; border-collapse:collapse; background:#fff; border:1px solid #e4e2dc; }
+  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid #eeece6; vertical-align:top; }
+  th { background:#fafaf8; font-weight:600; font-size:13px; }
+  .pending_approval { color:#9a6700; font-weight:600; }
+  .approved { color:#1a7f37; font-weight:600; }
+  .rejected { color:#cf222e; font-weight:600; }
+  .approve { border-color:#1a7f37; color:#1a7f37; }
+  .reject { border-color:#cf222e; color:#cf222e; }
+  pre { margin:0; white-space:pre-wrap; font-size:12px; max-width:600px; }
+  .muted { color:#6b7078; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Lumen Staff · Human approval</h1>
+  <a href="/products.html" style="color:#fff">Manage products</a>
+  <div class="spacer"></div>
+  <input id="name" placeholder="Your name" value="Support Lead">
+  <input id="token" type="password" placeholder="Staff token">
+  <button id="load">Load</button>
+</header>
+<main>
+  <p class="muted">The assistant can only create return requests. Every return must be approved or rejected here by a person.</p>
+  <h2>Return requests</h2>
+  <table><thead><tr><th>Return ID</th><th>Customer</th><th>Order / product</th><th>Reason</th><th>Status</th><th>Action</th></tr></thead><tbody id="returns"></tbody></table>
+  <h2>Audit log (latest 100, PII masked)</h2>
+  <table><thead><tr><th>Time</th><th>Event</th><th>Detail</th></tr></thead><tbody id="audit"></tbody></table>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+$('token').value = sessionStorage.getItem('staffToken') || '';
+
+async function api(path, options = {}) {
+  const res = await fetch(path, { headers: { 'content-type': 'application/json', 'x-staff-token': $('token').value }, ...options });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error || res.statusText);
+  return body;
+}
+const cell = (tr, text, cls) => { const td = document.createElement('td'); td.textContent = text; if (cls) td.className = cls; tr.appendChild(td); return td; };
+
+async function load() {
+  sessionStorage.setItem('staffToken', $('token').value);
+  try {
+    const returns = await api('/api/staff/returns');
+    $('returns').innerHTML = '';
+    if (!returns.length) { const tr = document.createElement('tr'); cell(tr, 'No return requests yet.', 'muted').colSpan = 6; $('returns').appendChild(tr); }
+    for (const r of returns) {
+      const tr = document.createElement('tr');
+      cell(tr, r.return_id);
+      cell(tr, `${r.full_name}\n${r.customer_id}`);
+      cell(tr, `${r.order_id}\n${r.product_name}`);
+      cell(tr, r.reason);
+      cell(tr, r.status.replace('_', ' ') + (r.reviewed_by ? `\nby ${r.reviewed_by}` : ''), r.status);
+      const td = cell(tr, '');
+      if (r.status === 'pending_approval') {
+        for (const [decision, label] of [['approved', 'Approve'], ['rejected', 'Reject']]) {
+          const b = document.createElement('button');
+          b.textContent = label; b.className = decision === 'approved' ? 'approve' : 'reject'; b.style.marginRight = '6px';
+          b.onclick = async () => { await api(`/api/staff/returns/${r.return_id}`, { method: 'POST', body: JSON.stringify({ decision, staffName: $('name').value }) }); load(); };
+          td.appendChild(b);
+        }
+      }
+      $('returns').appendChild(tr);
+    }
+    const audit = await api('/api/staff/audit');
+    $('audit').innerHTML = '';
+    for (const a of audit) {
+      const tr = document.createElement('tr');
+      cell(tr, new Date(a.ts).toLocaleString());
+      cell(tr, a.event);
+      const td = cell(tr, '');
+      const pre = document.createElement('pre'); pre.textContent = JSON.stringify(a.detail, null, 1); td.appendChild(pre);
+      $('audit').appendChild(tr);
+    }
+  } catch (err) { alert(err.message); }
+}
+$('load').onclick = load;
+if ($('token').value) load();
+</script>
+</body>
+</html>

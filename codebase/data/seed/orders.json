@@ -1,0 +1,14 @@
+[
+  {"order_id":"LUM-ORD-20261101-0001","customer_id":"LUM-CUST-100001","status":"delivered","order_date":"-20","delivery_date":"-16","courier":"BlueDart","tracking_ref":"BD123456789IN","delivery_city":"Mumbai",
+   "items":[{"product_id":"LUM-PRD-0001","size":"8","quantity":1,"price_inr":4499},{"product_id":"LUM-PRD-0012","size":"M","quantity":2,"price_inr":899}]},
+  {"order_id":"LUM-ORD-20261115-0002","customer_id":"LUM-CUST-100001","status":"shipped","order_date":"-3","delivery_date":"+2","courier":"Delhivery","tracking_ref":"DL987654321IN","delivery_city":"Mumbai",
+   "items":[{"product_id":"LUM-PRD-0006","size":null,"quantity":1,"price_inr":12999}]},
+  {"order_id":"LUM-ORD-20260920-0003","customer_id":"LUM-CUST-100001","status":"delivered","order_date":"-60","delivery_date":"-56","courier":"BlueDart","tracking_ref":"BD555000111IN","delivery_city":"Mumbai",
+   "items":[{"product_id":"LUM-PRD-0016","size":null,"quantity":1,"price_inr":4299}]},
+  {"order_id":"LUM-ORD-20261110-0004","customer_id":"LUM-CUST-100002","status":"delivered","order_date":"-12","delivery_date":"-9","courier":"Ekart","tracking_ref":"EK111222333IN","delivery_city":"Bengaluru",
+   "items":[{"product_id":"LUM-PRD-0009","size":null,"quantity":1,"price_inr":54990}]},
+  {"order_id":"LUM-ORD-20261119-0005","customer_id":"LUM-CUST-100002","status":"processing","order_date":"-1","delivery_date":"+4","courier":null,"tracking_ref":null,"delivery_city":"Bengaluru",
+   "items":[{"product_id":"LUM-PRD-0013","size":"L","quantity":1,"price_inr":3299}]},
+  {"order_id":"LUM-ORD-20261117-0006","customer_id":"LUM-CUST-100003","status":"out_for_delivery","order_date":"-4","delivery_date":"0","courier":"Delhivery","tracking_ref":"DL444555666IN","delivery_city":"Pune",
+   "items":[{"product_id":"LUM-PRD-0014","size":"M","quantity":2,"price_inr":1499}]}
+]

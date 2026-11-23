@@ -1,0 +1,5 @@
+[
+  {"customer_id":"LUM-CUST-100001","full_name":"Priya Sharma","email":"priya.sharma@example.com","phone":"+91 90000 00001","city":"Mumbai"},
+  {"customer_id":"LUM-CUST-100002","full_name":"Arjun Mehta","email":"arjun.mehta@example.com","phone":"+91 90000 00002","city":"Bengaluru"},
+  {"customer_id":"LUM-CUST-100003","full_name":"Sara Khan","email":"sara.khan@example.com","phone":"+91 90000 00003","city":"Pune"}
+]

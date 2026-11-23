@@ -1,0 +1,15 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "npm install --onnxruntime-node-install-cuda=skip --no-audit --no-fund",
+  "buildCommand": "mkdir -p .vercel-out && printf 'User-agent: *\\nDisallow: /\\n' > .vercel-out/robots.txt",
+  "outputDirectory": ".vercel-out",
+  "rewrites": [{ "source": "/(.*)", "destination": "/api" }],
+  "functions": {
+    "api/index.ts": {
+      "maxDuration": 60,
+      "memory": 1024,
+      "excludeFiles": "{node_modules/onnxruntime-node/**,node_modules/onnxruntime-common/**,node_modules/fastembed/**,node_modules/@anush008/**,node_modules/.cache/**}"
+    }
+  }
+}

@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lumen Staff – Products</title>
+<style>
+  :root { --ink:#1f2328; --muted:#6b7078; --line:#e4e2dc; --brand:#1d4e89; --bad:#cf222e; --ok:#1a7f37; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; background:#f6f5f2; color:var(--ink); }
+  header { background:#3b3f46; color:#fff; padding:14px 20px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  header h1 { font-size:17px; margin:0; }
+  header .spacer { flex:1; }
+  header a { color:#fff; }
+  main { max-width:1200px; margin:0 auto; padding:20px; }
+  h2 { font-size:16px; margin:22px 0 10px; }
+  input, select, textarea, button { font:inherit; padding:7px 9px; border-radius:6px; border:1px solid #c9c6bf; }
+  button { cursor:pointer; background:#fff; }
+  button.primary { color:#fff; background:var(--brand); border-color:var(--brand); }
+  button.danger { color:var(--bad); }
+  .muted { color:var(--muted); }
+  .filters { display:flex; gap:10px; flex-wrap:wrap; margin:14px 0; }
+  .filters input, .filters select { background:#fff; }
+  .catalogue-heading { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+  .catalogue-heading h2 { margin:22px 0 10px; }
+  .form-grid { display:grid; grid-template-columns:repeat(3, minmax(160px, 1fr)); gap:10px; }
+  .form-grid label { display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted); }
+  .form-grid .wide { grid-column:span 2; }
+  textarea { min-height:64px; resize:vertical; }
+  .form-actions { display:flex; gap:8px; margin-top:10px; }
+  dialog { width:min(720px, calc(100% - 24px)); max-height:calc(100% - 24px); padding:20px; border:1px solid var(--line); border-radius:12px; color:var(--ink); }
+  dialog::backdrop { background:rgba(20, 25, 32, .5); }
+  .dialog-heading { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:16px; }
+  .dialog-heading h2 { margin:0; }
+  #close-dialog { border:0; background:transparent; font-size:22px; line-height:1; }
+  #status { min-height:22px; margin:10px 0; }
+  #status.error { color:var(--bad); }
+  #status.success { color:var(--ok); }
+  .table-wrap { overflow-x:auto; }
+  table { width:100%; min-width:850px; border-collapse:collapse; background:#fff; border:1px solid var(--line); }
+  th, td { text-align:left; padding:9px 10px; border-bottom:1px solid #eeece6; vertical-align:top; }
+  th { background:#fafaf8; font-weight:600; font-size:13px; }
+  td.actions { white-space:nowrap; }
+  td.actions button { margin-right:5px; }
+  @media(max-width:700px) { main { padding:12px; } .form-grid { grid-template-columns:1fr; } .form-grid .wide { grid-column:auto; } dialog { padding:16px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Lumen Staff · Products</h1>
+  <a href="/staff.html">Return approvals</a>
+  <div class="spacer"></div>
+  <input id="token" type="password" placeholder="Staff token" aria-label="Staff token">
+  <button id="load">Load products</button>
+</header>
+<main>
+  <p class="muted">Manage the product catalogue. Products referenced by orders or return requests cannot be deleted.</p>
+  <div id="status" role="status" aria-live="polite"></div>
+  <section>
+    <div class="catalogue-heading">
+      <h2>Product catalogue</h2>
+      <button class="primary" id="add-product" type="button">Add product</button>
+    </div>
+    <div class="filters">
+      <input id="search" type="search" placeholder="Search name, brand, ID">
+      <select id="category"><option value="">All categories</option></select>
+      <input id="min-price" type="number" min="0" placeholder="Min price">
+      <input id="max-price" type="number" min="0" placeholder="Max price">
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Product ID</th><th>Name</th><th>Brand / category</th><th>Price</th><th>Sizes</th><th>Rating</th><th>Description</th><th>Actions</th></tr></thead>
+        <tbody id="products"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+<dialog id="product-dialog" aria-labelledby="form-title">
+  <div class="dialog-heading">
+    <h2 id="form-title">Add product</h2>
+    <button id="close-dialog" type="button" aria-label="Close dialog">&times;</button>
+  </div>
+  <form id="product-form">
+    <div class="form-grid">
+      <label>Product name<input name="name" required maxlength="200"></label>
+      <label>Brand<input name="brand" required maxlength="120"></label>
+      <label>Category<select id="product-category" name="category" required></select></label>
+      <label>Price (INR)<input name="price_inr" type="number" min="0" step="0.01" required></label>
+      <label>Sizes (comma-separated)<input name="sizes" placeholder="Leave blank for one-size products"></label>
+      <label>Rating (0–5, optional)<input name="rating" type="number" min="0" max="5" step="0.1"></label>
+      <label class="wide">Description<textarea name="description" required maxlength="2000"></textarea></label>
+    </div>
+    <div class="form-actions">
+      <button class="primary" id="save" type="submit">Add product</button>
+      <button id="cancel" type="button">Cancel</button>
+    </div>
+  </form>
+</dialog>
+<script>
+const $ = (id) => document.getElementById(id);
+const PRODUCT_CATEGORIES = ['Footwear', 'Topwear', 'Bottomwear', 'Accessories'];
+let products = [];
+let editingId = null;
+$('token').value = sessionStorage.getItem('staffToken') || '';
+
+async function api(path, options = {}) {
+  const res = await fetch(path, {
+    headers: { 'content-type': 'application/json', 'x-staff-token': $('token').value },
+    ...options,
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error || res.statusText);
+  return body;
+}
+
+function status(message, kind = '') {
+  $('status').textContent = message;
+  $('status').className = kind;
+}
+
+function updateCategories() {
+  const filter = $('category');
+  const selected = filter.value;
+  filter.replaceChildren(new Option('All categories', ''));
+  const productCategory = $('product-category');
+  productCategory.replaceChildren(new Option('Select category', ''));
+  for (const category of PRODUCT_CATEGORIES) {
+    filter.add(new Option(category, category));
+    productCategory.add(new Option(category, category));
+  }
+  filter.value = PRODUCT_CATEGORIES.includes(selected) ? selected : '';
+}
+
+function renderProducts() {
+  const search = $('search').value.trim().toLowerCase();
+  const category = $('category').value;
+  const min = $('min-price').value === '' ? -Infinity : Number($('min-price').value);
+  const max = $('max-price').value === '' ? Infinity : Number($('max-price').value);
+  const filtered = products.filter((p) => {
+    const searchable = `${p.product_id} ${p.name} ${p.brand}`.toLowerCase();
+    return (!search || searchable.includes(search))
+      && (!category || p.category === category)
+      && Number(p.price_inr) >= min
+      && Number(p.price_inr) <= max;
+  });
+  $('products').innerHTML = '';
+  if (!filtered.length) {
+    const row = document.createElement('tr');
+    const cell = document.createElement('td');
+    cell.colSpan = 8; cell.className = 'muted'; cell.textContent = 'No products match these filters.';
+    row.appendChild(cell); $('products').appendChild(row);
+    return;
+  }
+  for (const product of filtered) {
+    const row = document.createElement('tr');
+    const addCell = (value) => { const cell = document.createElement('td'); cell.textContent = value; row.appendChild(cell); };
+    addCell(product.product_id);
+    addCell(product.name);
+    addCell(`${product.brand} / ${product.category}`);
+    addCell(`₹${Number(product.price_inr).toLocaleString('en-IN')}`);
+    addCell((product.sizes || []).join(', ') || 'One size');
+    addCell(product.rating ?? '—');
+    addCell(product.description);
+    const actions = document.createElement('td'); actions.className = 'actions';
+    const edit = document.createElement('button'); edit.textContent = 'Edit'; edit.type = 'button';
+    edit.addEventListener('click', () => beginEdit(product));
+    const remove = document.createElement('button'); remove.textContent = 'Delete'; remove.type = 'button'; remove.className = 'danger';
+    remove.addEventListener('click', () => deleteProduct(product));
+    actions.append(edit, remove); row.appendChild(actions);
+    $('products').appendChild(row);
+  }
+}
+
+async function load() {
+  sessionStorage.setItem('staffToken', $('token').value);
+  try {
+    products = await api('/api/staff/products');
+    updateCategories();
+    renderProducts();
+    status(`${products.length} products loaded.`, 'success');
+  } catch (err) {
+    status(err.message, 'error');
+  }
+}
+
+function beginEdit(product) {
+  editingId = product.product_id;
+  const form = $('product-form');
+  for (const field of ['name', 'brand', 'category', 'price_inr', 'description', 'rating']) {
+    form.elements[field].value = product[field] ?? '';
+  }
+  form.elements.sizes.value = (product.sizes || []).join(', ');
+  $('form-title').textContent = `Edit ${product.product_id}`;
+  $('save').textContent = 'Save changes';
+  $('product-dialog').showModal();
+  form.elements.name.focus();
+}
+
+function beginCreate() {
+  resetForm();
+  $('product-dialog').showModal();
+  $('product-form').elements.name.focus();
+}
+
+function resetForm() {
+  editingId = null;
+  $('product-form').reset();
+  $('form-title').textContent = 'Add product';
+  $('save').textContent = 'Add product';
+  $('cancel').hidden = true;
+}
+
+$('product-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const data = new FormData(form);
+  const sizes = String(data.get('sizes') || '').split(',').map((size) => size.trim()).filter(Boolean);
+  const ratingText = String(data.get('rating') || '');
+  const product = {
+    name: String(data.get('name')).trim(),
+    brand: String(data.get('brand')).trim(),
+    category: String(data.get('category')).trim(),
+    price_inr: Number(data.get('price_inr')),
+    sizes,
+    description: String(data.get('description')).trim(),
+    rating: ratingText === '' ? null : Number(ratingText),
+  };
+  try {
+    const wasEditing = Boolean(editingId);
+    await api(wasEditing ? `/api/staff/products/${encodeURIComponent(editingId)}` : '/api/staff/products', {
+      method: wasEditing ? 'PUT' : 'POST',
+      body: JSON.stringify(product),
+    });
+    resetForm();
+    $('product-dialog').close();
+    await load();
+    status(wasEditing ? 'Product updated.' : 'Product added.', 'success');
+  } catch (err) {
+    status(err.message, 'error');
+  }
+});
+
+async function deleteProduct(product) {
+  if (!window.confirm(`Delete "${product.name}"?`)) return;
+  try {
+    await api(`/api/staff/products/${encodeURIComponent(product.product_id)}`, { method: 'DELETE' });
+    await load();
+    status('Product deleted.', 'success');
+  } catch (err) {
+    status(err.message, 'error');
+  }
+}
+
+$('add-product').addEventListener('click', beginCreate);
+$('cancel').addEventListener('click', () => $('product-dialog').close());
+$('close-dialog').addEventListener('click', () => $('product-dialog').close());
+$('product-dialog').addEventListener('close', resetForm);
+$('load').addEventListener('click', load);
+for (const id of ['search', 'category', 'min-price', 'max-price']) $(id).addEventListener('input', renderProducts);
+updateCategories();
+if ($('token').value) load();
+</script>
+</body>
+</html>
